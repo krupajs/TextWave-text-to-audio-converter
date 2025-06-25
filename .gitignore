@@ -10,6 +10,9 @@
 !.yarn/releases
 !.yarn/versions
 
+#gcp api key
+gcp-key.json
+
 # testing
 /coverage
 
