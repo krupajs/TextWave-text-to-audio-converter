@@ -5,17 +5,14 @@ import path from 'path';
 import { existsSync } from 'fs';
 
 // Initialize the Google Cloud TTS client
-const client = new TextToSpeechClient(
-  process.env.GCP_CREDENTIALS_
-    ? {
-        // Production: use environment variable
-        credentials: JSON.parse(process.env.GCP_CREDENTIALS as string),
-      }
-    : {
-        // Local: use JSON file
-        keyFilename: path.join(process.cwd(), 'gcp-key.json'),
-      }
-);
+if (!process.env.GCP_CREDENTIALS) {
+  throw new Error("Missing GCP_CREDENTIALS environment variable");
+}
+
+const client = new TextToSpeechClient({
+  credentials: JSON.parse(process.env.GCP_CREDENTIALS),
+});
+
 export async function POST(req: Request) {
   const { text } = await req.json();
 
