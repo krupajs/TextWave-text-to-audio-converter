@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   try {
     // Ensure audio directory exists
-    const audioDir = path.join(process.cwd(), 'public', 'audio');
+    const audioDir = path.join(process.cwd(), '/tmp', 'audio');
     if (!existsSync(audioDir)) {
       await mkdir(audioDir, { recursive: true });
     }
