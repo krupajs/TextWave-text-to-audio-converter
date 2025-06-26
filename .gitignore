@@ -12,7 +12,7 @@
 
 #gcp api key
 gcp-key.json
-
+.env.local
 # testing
 /coverage
 

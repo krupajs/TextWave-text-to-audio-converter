@@ -13,6 +13,7 @@ export default function AudioPlayer({ url }: AudioPlayerProps) {
         download
         className="block mt-2 text-blue-600 underline"
       >
+        Download
       </a>
     </div>
   );

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Upload, Download, Volume2, FileText } from 'lucide-react';
 import FileUpload from '@/components/FileUpload';
-import AudioPlayer from '@/components/AudioPlayer';
+import AudioPlayerPdf from '@/components/AudioPlayerPdf';
 
 export default function PdfToAudioPage() {
   const [pdfAudioUrl, setPdfAudioUrl] = useState<string | null>(null);
@@ -234,7 +234,7 @@ export default function PdfToAudioPage() {
                 </div>
               </div>
               <div className="bg-white p-4 rounded-lg">
-                <AudioPlayer url={pdfAudioUrl} />
+                <AudioPlayerPdf url={pdfAudioUrl} />
               </div>
             </div>
           )}

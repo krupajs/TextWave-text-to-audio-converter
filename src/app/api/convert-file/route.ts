@@ -24,9 +24,18 @@ interface PDFParserError {
 }
 
 // Initialize the Google Cloud TTS client
-const client = new TextToSpeechClient({
-  keyFilename: path.join(process.cwd(), 'gcp-key.json'),
-});
+const client = new TextToSpeechClient(
+  process.env.GCP_CREDENTIALS_
+    ? {
+        // Production: use environment variable
+        credentials: JSON.parse(process.env.GCP_CREDENTIALS as string),
+      }
+    : {
+        // Local: use JSON file
+        keyFilename: path.join(process.cwd(), 'gcp-key.json'),
+      }
+);
+
 
 export async function POST(req: Request): Promise<Response> {
   try {
