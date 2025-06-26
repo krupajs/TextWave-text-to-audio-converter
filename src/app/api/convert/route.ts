@@ -5,10 +5,17 @@ import path from 'path';
 import { existsSync } from 'fs';
 
 // Initialize the Google Cloud TTS client
-const client = new TextToSpeechClient({
-  keyFilename: path.join(process.cwd(), 'gcp-key.json'),
-});
-
+const client = new TextToSpeechClient(
+  process.env.GCP_CREDENTIALS_
+    ? {
+        // Production: use environment variable
+        credentials: JSON.parse(process.env.GCP_CREDENTIALS as string),
+      }
+    : {
+        // Local: use JSON file
+        keyFilename: path.join(process.cwd(), 'gcp-key.json'),
+      }
+);
 export async function POST(req: Request) {
   const { text } = await req.json();
 
@@ -18,7 +25,7 @@ export async function POST(req: Request) {
 
   try {
     // Ensure audio directory exists
-    const audioDir = path.join(process.cwd(), '/tmp', 'audio');
+    const audioDir = path.join('/tmp', 'audio');
     if (!existsSync(audioDir)) {
       await mkdir(audioDir, { recursive: true });
     }
