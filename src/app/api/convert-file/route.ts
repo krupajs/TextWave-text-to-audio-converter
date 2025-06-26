@@ -1,19 +1,39 @@
 import { NextResponse } from 'next/server';
 import { TextToSpeechClient } from '@google-cloud/text-to-speech';
-import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { existsSync } from 'fs';
+
+// Define proper TypeScript interfaces for PDF2JSON data structures
+interface PDFTextRun {
+  T?: string;
+}
+
+interface PDFTextItem {
+  R?: PDFTextRun[];
+}
+
+interface PDFPage {
+  Texts?: PDFTextItem[];
+}
+
+interface PDFData {
+  Pages?: PDFPage[];
+}
+
+interface PDFParserError {
+  parserError: Error;
+}
 
 // Initialize the Google Cloud TTS client
 const client = new TextToSpeechClient({
   keyFilename: path.join(process.cwd(), 'gcp-key.json'),
 });
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<Response> {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const generateAudio = formData.get('generateAudio') === 'true';
+    const isTextFile = formData.get('isTextFile') === 'true';
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
@@ -22,137 +42,146 @@ export async function POST(req: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    console.log('Processing PDF with PDF2JSON...');
+    let text = '';
 
-    const PDF2JSON = require('pdf2json');
-    const pdfParser = new PDF2JSON();
+    // Handle text files (from extracted PDF text)
+    if (isTextFile) {
+      text = buffer.toString('utf-8');
+    } else {
+      // Handle PDF files
+      const PDF2JSON = (await import('pdf2json')).default;
+      const pdfParser = new PDF2JSON();
 
-    return new Promise((resolve) => {
-      pdfParser.on('pdfParser_dataError', (errData: any) => {
-        console.error('PDF2JSON Error:', errData);
-        resolve(NextResponse.json({ error: 'PDF parsing failed', details: errData }, { status: 400 }));
-      });
-
-      pdfParser.on('pdfParser_dataReady', async (pdfData: any) => {
-        console.log('PDF2JSON Success! Pages:', pdfData.Pages?.length || 0);
-
-        let text = '';
-        pdfData.Pages?.forEach((page: any) => {
-          page.Texts?.forEach((textItem: any) => {
-            textItem.R?.forEach((run: any) => {
-              if (run.T) {
-                text += decodeURIComponent(run.T) + ' ';
-              }
-            });
-          });
-          // Add page break
-          text += '\n\n';
+      const result: Response = await new Promise((resolve) => {
+        pdfParser.on('pdfParser_dataError', (errData: PDFParserError) => {
+          console.error('PDF2JSON Error:', errData);
+          resolve(NextResponse.json({ error: 'PDF parsing failed', details: errData }, { status: 400 }));
         });
 
-        text = text.trim();
-        console.log('Extracted text length:', text.length);
+        pdfParser.on('pdfParser_dataReady', async (pdfData: PDFData) => {
+          let extractedText = '';
+          pdfData.Pages?.forEach((page: PDFPage) => {
+            page.Texts?.forEach((textItem: PDFTextItem) => {
+              textItem.R?.forEach((run: PDFTextRun) => {
+                if (run.T) {
+                  extractedText += decodeURIComponent(run.T) + ' ';
+                }
+              });
+            });
+            extractedText += '\n\n';
+          });
 
-        if (!text) {
-          resolve(NextResponse.json({ error: 'No text found in PDF' }, { status: 400 }));
-          return;
-        }
+          extractedText = extractedText.trim();
 
-        // If generateAudio is requested, create audio using Google Cloud TTS
-        if (generateAudio) {
-          try {
-            // Ensure audio directory exists
-            const audioDir = path.join(process.cwd(), 'public', 'audio');
-            if (!existsSync(audioDir)) {
-              await mkdir(audioDir, { recursive: true });
-            }
-
-            // Split text into chunks for Google Cloud TTS (5000 character limit)
-            const chunks = splitTextIntoChunks(text, 4500);
-            const audioBuffers: Buffer[] = [];
-
-            console.log(`Processing ${chunks.length} text chunks for TTS...`);
-
-            for (let i = 0; i < chunks.length; i++) {
-              const chunk = chunks[i];
-              console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} characters)`);
-
-              const request = {
-                input: { text: chunk },
-                voice: {
-                  languageCode: 'en-US',
-                  name: 'en-US-Standard-D',
-                  ssmlGender: 'NEUTRAL' as const,
-                },
-                audioConfig: {
-                  audioEncoding: 'MP3' as const,
-                  speakingRate: 1.0,
-                  pitch: 0.0,
-                },
-              };
-
-              const [response] = await client.synthesizeSpeech(request);
-              
-              if (response.audioContent) {
-                audioBuffers.push(Buffer.from(response.audioContent));
-              }
-
-              // Add a small delay to avoid rate limiting
-              if (i < chunks.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-              }
-            }
-
-            // Concatenate audio buffers
-            const finalBuffer = Buffer.concat(audioBuffers);
-            const audioFileName = `pdf_${Date.now()}.mp3`;
-            const audioFilePath = path.join(audioDir, audioFileName);
-
-            await writeFile(audioFilePath, finalBuffer);
-
-            resolve(NextResponse.json({
-              success: true,
-              audioUrl: `/audio/${audioFileName}`,
-              text: text,
-              textLength: text.length,
-              fileName: file.name,
-              chunksProcessed: chunks.length,
-              method: 'google-cloud-tts'
-            }));
-
-          } catch (ttsError) {
-            console.error('Google Cloud TTS Error:', ttsError);
-            // Fallback to returning text only
-            resolve(NextResponse.json({
-              success: true,
-              text: text,
-              textLength: text.length,
-              fileName: file.name,
-              error: 'Audio generation failed, but text extraction succeeded',
-              method: 'text-only'
-            }));
+          if (!extractedText) {
+            resolve(NextResponse.json({ error: 'No text found in PDF' }, { status: 400 }));
+            return;
           }
-        } else {
-          // Return text only for client-side processing or preview
-          resolve(NextResponse.json({
-            success: true,
-            text: text,
-            textLength: text.length,
-            fileName: file.name,
-            method: 'text-extraction-only'
-          }));
-        }
+
+          // If not generating audio, just return text
+          if (!generateAudio) {
+            resolve(NextResponse.json({
+              success: true,
+              text: extractedText,
+              textLength: extractedText.length,
+              fileName: file.name,
+              method: 'text-extraction-only'
+            }));
+            return;
+          }
+
+          // Generate audio directly
+          resolve(await generateAudioResponse(extractedText, file.name));
+        });
+
+        pdfParser.parseBuffer(buffer);
       });
 
-      pdfParser.parseBuffer(buffer);
+      return result;
+    }
+
+    // For text files, generate audio if requested
+    if (generateAudio && text) {
+      return await generateAudioResponse(text, file.name);
+    }
+
+    // Return text only for text files when not generating audio
+    return NextResponse.json({
+      success: true,
+      text: text,
+      textLength: text.length,
+      fileName: file.name,
+      method: 'text-extraction-only'
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
-// Helper function to split text into chunks (same as in convert route)
+// Helper function to generate audio and return as direct download
+async function generateAudioResponse(text: string, fileName: string): Promise<Response> {
+  try {
+    const chunks = splitTextIntoChunks(text, 4500);
+    const audioBuffers: Buffer[] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+
+      const request = {
+        input: { text: chunk },
+        voice: {
+          languageCode: 'en-US',
+          name: 'en-US-Standard-D',
+          ssmlGender: 'NEUTRAL' as const,
+        },
+        audioConfig: {
+          audioEncoding: 'MP3' as const,
+          speakingRate: 1.0,
+          pitch: 0.0,
+        },
+      };
+
+      const [response] = await client.synthesizeSpeech(request);
+      if (response.audioContent) {
+        audioBuffers.push(Buffer.from(response.audioContent));
+      }
+
+      // Small delay between requests to avoid rate limiting
+      if (i < chunks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    const finalBuffer = Buffer.concat(audioBuffers);
+    
+    // Generate filename for audio
+    const audioFileName = fileName 
+      ? fileName.replace(/\.(pdf|txt)$/i, '.mp3')
+      : `converted_audio_${Date.now()}.mp3`;
+
+    // Return audio file directly for download
+    return new Response(finalBuffer, {
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Content-Disposition': `attachment; filename="${audioFileName}"`,
+        'Content-Length': finalBuffer.length.toString(),
+        'Cache-Control': 'no-cache',
+      },
+    });
+
+  } catch (ttsError) {
+    console.error('Google Cloud TTS Error:', ttsError);
+    return NextResponse.json({
+      error: 'Audio generation failed',
+      details: ttsError instanceof Error ? ttsError.message : 'Unknown TTS error'
+    }, { status: 500 });
+  }
+}
+
+// Helper function to split text into chunks
 function splitTextIntoChunks(text: string, maxChunkSize: number): string[] {
   if (text.length <= maxChunkSize) {
     return [text];

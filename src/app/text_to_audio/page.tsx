@@ -169,10 +169,13 @@ export default function TextToAudioPage() {
               <h3 className="font-semibold text-gray-800">Step 1: Enter Text</h3>
               <p>Type or paste your text into the text area above. You can enter any amount of text you want to convert.</p>
             </div>
-            <div className="space-y-3">
-              <h3 className="font-semibold text-gray-800">Step 2: Convert</h3>
-              <p>Click the "Convert to Audio" button and our AI will generate natural-sounding speech from your text.</p>
-            </div>
+           <div className="space-y-3">
+  <h3 className="font-semibold text-gray-800">Step 2: Convert</h3>
+  <p>
+    Click the &quot;Convert to Audio&quot; button and our AI will generate natural-sounding speech from your text.
+  </p>
+</div>
+
             <div className="space-y-3">
               <h3 className="font-semibold text-gray-800">Step 3: Listen</h3>
               <p>Use the audio player to listen to your converted text. You can pause, replay, and control playback speed.</p>

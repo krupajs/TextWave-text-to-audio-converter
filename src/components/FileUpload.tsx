@@ -182,7 +182,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onSubmit, loading }) => {
         <h3 className="font-semibold text-gray-800 mb-2">How it works:</h3>
         <ul className="text-sm text-gray-600 space-y-1">
           <li>• Upload your PDF file (max 10MB)</li>
-          <li>• We'll extract the text content</li>
+          <li>• We&apos;ll extract the text content</li>
           <li>• Convert text to natural-sounding audio</li>
           <li>• Download your audio file when ready</li>
         </ul>

@@ -9,7 +9,7 @@ interface TTSPlayerProps {
 const TTSPlayer: React.FC<TTSPlayerProps> = ({ text }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [currentPosition, setCurrentPosition] = useState(0);
+  const [_, setCurrentPosition] = useState(0);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<number>(0);
   const [rate, setRate] = useState(1);

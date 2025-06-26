@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Upload, Download, Play, Volume2, FileText } from 'lucide-react';
+import { ArrowLeft, Upload, Download, Volume2, FileText } from 'lucide-react';
 import FileUpload from '@/components/FileUpload';
 import AudioPlayer from '@/components/AudioPlayer';
 
