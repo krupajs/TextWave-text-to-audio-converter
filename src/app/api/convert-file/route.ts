@@ -25,7 +25,7 @@ interface PDFParserError {
 
 // Initialize the Google Cloud TTS client
 const client = new TextToSpeechClient(
-  process.env.GCP_CREDENTIALS_
+  process.env.GCP_CREDENTIALS
     ? {
         // Production: use environment variable
         credentials: JSON.parse(process.env.GCP_CREDENTIALS as string),
