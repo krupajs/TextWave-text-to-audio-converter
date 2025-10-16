@@ -13,8 +13,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Microsoft Clarity ID (store it in .env for safety)
+// Microsoft Clarity & Hotjar IDs (keep in .env for security)
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID || "tq483zkk3k";
+const HOTJAR_ID = process.env.NEXT_PUBLIC_HOTJAR_ID || "6548337";
+const HOTJAR_SV = process.env.NEXT_PUBLIC_HOTJAR_SV || "6";
 
 export const metadata: Metadata = {
   title: "TextWave: Text to Audio",
@@ -39,7 +41,22 @@ export default function RootLayout({
             })(window, document, "clarity", "script", "${CLARITY_ID}");
           `}
         </Script>
+
+        {/* ✅ Hotjar Tracking Script */}
+        <Script id="hotjar-tracking" strategy="afterInteractive">
+          {`
+            (function(h,o,t,j,a,r){
+                h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+                h._hjSettings={hjid:${HOTJAR_ID},hjsv:${HOTJAR_SV}};
+                a=o.getElementsByTagName('head')[0];
+                r=o.createElement('script');r.async=1;
+                r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+                a.appendChild(r);
+            })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
+          `}
+        </Script>
       </head>
+
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
